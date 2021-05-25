@@ -86,7 +86,7 @@ char *get_number(const char *line, int *i, uint8_t *ntype, const int line_len)
     while (*i < line_len && is_valid_num_char(CURR(line, *i)))
     {
         const char c = CURR(line, *i);
-	const char next = NEXT(line, *i);
+	    const char next = NEXT(line, *i);
 
         switch (c)
         {
@@ -103,39 +103,38 @@ char *get_number(const char *line, int *i, uint8_t *ntype, const int line_len)
                 break;
 
 	    case '.':
-		if (dot_encountered == -1)
-		{
-		    if (next >= '0' && next <= '9')
-		    {
-			dot_encountered = *i;
-			*ntype = tok_flt;
-		    }
-		    else
-			return number;
-		}
-		else
-		{
-		    charon_fail(*i, "encountered (.) character (num_retrieval :%d), already had one at %d", fda + 1, dot_encountered + 1);
-		    success = false;
-		}
+            if (dot_encountered == -1)
+            {
+                if (next >= '0' && next <= '9')
+                {
+                dot_encountered = *i;
+                *ntype = tok_flt;
+                }
+                else
+                return number;
+            }
+            else
+            {
+                charon_fail(*i, "encountered (.) character (num_retrieval :%d), already had one at %d", fda + 1, dot_encountered + 1);
+                success = false;
+            }
 		break;
 
 	    default:
-		if (isalnum(CURR(line, *i)))
-		{
-		    charon_fail(*i, "encountered invalid character (num_retrieval :%d) %c", c, fda + 1);
-		    success = false;
-		}
-		else
-		    return number;
-		
+            if (isalnum(CURR(line, *i)))
+            {
+                charon_fail(*i, "encountered invalid character (num_retrieval :%d) %c", c, fda + 1);
+                success = false;
+            }
+            else
+                return number;		
 
         }
-	if (success == false)
-	{
-	    free(number);
-	    return NULL;
-	}
+        if (success == false)
+        {
+            free(number);
+            return NULL;
+        }
 
         number[index++] = c;
         (*i)++;
@@ -152,10 +151,10 @@ char *get_string(const char *line, int *i, int line_len)
 
     while (*i < line_len)
     {
-	if (!isalnum(CURR(line, *i)) && CURR(line, *i) != '_') break;
-	name[*i - faa] = line[*i];
+        if (!isalnum(CURR(line, *i)) && CURR(line, *i) != '_') break;
+        name[*i - faa] = line[*i];
 
-	(*i)++;
+        (*i)++;
     }
 
     return name;
@@ -163,45 +162,45 @@ char *get_string(const char *line, int *i, int line_len)
 
 uint8_t get_operator(const char *line, int *i)
 {
-    uint8_t op_type = 255;
+    uint8_t op_type = tok_undefined;
     
     switch (CURR(line, *i))
     {
-	case '+':
-	    op_type = tok_add;
-	    break;
+        case '+':
+            op_type = tok_add;
+            break;
 
-	case '-':
-	    op_type = tok_sub;
-	    break;
+        case '-':
+            op_type = tok_sub;
+            break;
 
-	case '*':
-	    op_type = tok_mul;
-	    break;
+        case '*':
+            op_type = tok_mul;
+            break;
 
-	case '/':
-	    op_type = tok_div;
-	    break;
+        case '/':
+            op_type = tok_div;
+            break;
 
-	case '%':
-	    op_type = tok_mod;
-	    break;
+        case '%':
+            op_type = tok_mod;
+            break;
 
-	case '=':
-	    op_type = tok_equal;
-	    break;
+        case '=':
+            op_type = tok_equal;
+            break;
 
-	case '(':
-	    op_type = tok_lpar;
-	    break;
+        case '(':
+            op_type = tok_lpar;
+            break;
 
-	case ')':
-	    op_type = tok_rpar;
-	    break;
+        case ')':
+            op_type = tok_rpar;
+            break;
 
-	default:
-	    charon_fail(*i, "unknown operator %c", CURR(line, *i));
-	    op_type = 255;
+        default:
+            charon_fail(*i, "unknown operator %c", CURR(line, *i));
+            op_type = tok_undefined;
     }
 
     (*i)++;
@@ -213,9 +212,9 @@ void set_token(toks_t *tokens, char *data, uint8_t type, int col)
     tokens->ntoks++;
     tokens->tokens = realloc(tokens->tokens, sizeof(tok_t) * tokens->ntoks);
     tokens->tokens[tokens->ntoks - 1] = (tok_t){
-	.data = data,
-	.type = type,
-	.col = col
+        .data = data,
+        .type = type,
+        .col = col
     };
 }
 
@@ -223,24 +222,13 @@ toks_t *tokenize_line(const char *line)
 {
     const int line_len = strlen(line);
     int i = 0, px = 0;
+    line_failed = false;
     toks_t *ret = malloc(sizeof(toks_t));
     ret->ntoks = 0;
     ret->tokens = malloc(0);
 
     while (i < line_len)
     {
-	if (line_failed)
-	{
-	    if (ret->ntoks < 1)
-	    {
-		for (int j = 0; j < ret->ntoks; j++)
-		    free(ret->tokens[j].data);
-	    }
-	    free(ret->tokens);
-	    free(ret);
-	    return NULL;
-	}
-
         if (isspace(CURR(line, i))) { i++; continue; }
         
         if (CURR(line, i) == '#') break;
@@ -248,31 +236,32 @@ toks_t *tokenize_line(const char *line)
         if (isdigit(CURR(line, i)))
         {
             uint8_t ntype = tok_int;
-	    px = i;
+	        px = i;
             char *num = get_number(line, &i, &ntype, line_len);
-	    set_token(ret, num, ntype, px);
-	    continue;
-	}
+	        set_token(ret, num, ntype, px);
+	        continue;
+	    }
 
-	if (isalpha(CURR(line, i)) || CURR(line, i) == '_')
-	{
-	    px = i;
-	    char *string = get_string(line, &i, line_len);
-	    set_token(ret, string, tok_str, px);
-	    continue;
-	}
+        if (isalpha(CURR(line, i)) || CURR(line, i) == '_')
+        {
+            px = i;
+            char *string = get_string(line, &i, line_len);
+            set_token(ret, string, tok_str, px);
+            continue;
+        }
 
-	px = i;
-	uint8_t op_type = get_operator(line, &i);
-	if (op_type != 255)
-	{
-	    char *op_str = malloc(i - px); 
-	    memset(op_str, '\0', i - px);
-	    set_token(ret, op_str, op_type, px);
-	}
+        px = i;
+        uint8_t op_type = get_operator(line, &i);
+        char *op_str = malloc(i - px); 
+        memset(op_str, '\0', i - px);
+        op_str = "!";
+        set_token(ret, op_str, op_type, px);
 
         i++;
     }
+
+    if (line_failed)
+	    return NULL; 
 
     return ret;
 }
@@ -282,18 +271,19 @@ void print_tokens(toks_t *tokens)
     printf("Tokens:\n"); 
     for (int i = 0; i < tokens->ntoks; i++)
     {
-	printf("ID: %d	Type: %s	LinePtr: [%d]	Symbol: %s\n",
-		i,
-		token_strs[tokens->tokens[i].type],
-		tokens->tokens[i].col,
-		tokens->tokens[i].data);
+        printf("ID: %d	Type: %s	LinePtr: [%d]	Symbol: %s\n",
+            i,
+            token_strs[tokens->tokens[i].type],
+            tokens->tokens[i].col,
+            tokens->tokens[i].data);
     }
 }
 
 void free_tokens(toks_t *toks)
 {
-    for (int i = 0; i < toks->ntoks; i++)
-	free(toks->tokens[i].data);
+    if (toks->ntoks < 0)
+	    for (int i = 0; i < toks->ntoks; i++)
+	        free(toks->tokens[i].data);
 
     free(toks->tokens);
     free(toks);
@@ -304,12 +294,10 @@ int main()
     while (1)
     {
         char *line = readline("-> ");
-        toks_t *ltoks = tokenize_line(line);
-	if (ltoks != NULL)
-	{
-	    print_tokens(ltoks);
-	    free_tokens(ltoks);
-	}
-	free(line);
+        toks_t *ltoks = tokenize_line(line);	
+        if (ltoks != NULL)
+            print_tokens(ltoks);
+        free_tokens(ltoks);
+        free(line);
     }
 }
