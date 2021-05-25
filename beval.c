@@ -53,15 +53,17 @@ const char *token_strs[_tok_end] = {
     "INT",
     "FLT",
     "STR",
-    "+",
-    "-",
-    "*",
-    "/",
-    "%",
-    "=",
-    "(",
-    ")",
+    "ADD",
+    "SUB",
+    "MUL",
+    "DIV",
+    "MOD",
+    "EQU",
+    "LPO",
+    "RPO",
 };
+
+bool line_failed = false;
 
 void charon_fail(int col, char *msg, ...)
 {
@@ -71,6 +73,7 @@ void charon_fail(int col, char *msg, ...)
     vfprintf(stderr, msg, vargs);
     fprintf(stderr , "\n");
     va_end(vargs);
+    line_failed = true;
 }
 
 char *get_number(const char *line, int *i, uint8_t *ntype, const int line_len)
@@ -160,9 +163,8 @@ char *get_string(const char *line, int *i, int line_len)
 
 uint8_t get_operator(const char *line, int *i)
 {
-    uint8_t op_type = -1;
-    printf("scanning op: %c\n\n", CURR(line, *i));
-
+    uint8_t op_type = 255;
+    
     switch (CURR(line, *i))
     {
 	case '+':
@@ -185,6 +187,10 @@ uint8_t get_operator(const char *line, int *i)
 	    op_type = tok_mod;
 	    break;
 
+	case '=':
+	    op_type = tok_equal;
+	    break;
+
 	case '(':
 	    op_type = tok_lpar;
 	    break;
@@ -195,7 +201,7 @@ uint8_t get_operator(const char *line, int *i)
 
 	default:
 	    charon_fail(*i, "unknown operator %c", CURR(line, *i));
-	    op_type = -1;
+	    op_type = 255;
     }
 
     (*i)++;
@@ -223,7 +229,19 @@ toks_t *tokenize_line(const char *line)
 
     while (i < line_len)
     {
-        if (CURR(line, i) == ' ') { i++; continue; }
+	if (line_failed)
+	{
+	    if (ret->ntoks < 1)
+	    {
+		for (int j = 0; j < ret->ntoks; j++)
+		    free(ret->tokens[j].data);
+	    }
+	    free(ret->tokens);
+	    free(ret);
+	    return NULL;
+	}
+
+        if (isspace(CURR(line, i))) { i++; continue; }
         
         if (CURR(line, i) == '#') break;
 
@@ -233,17 +251,25 @@ toks_t *tokenize_line(const char *line)
 	    px = i;
             char *num = get_number(line, &i, &ntype, line_len);
 	    set_token(ret, num, ntype, px);
+	    continue;
 	}
 
-	if (isalpha(CURR(line, i)))
+	if (isalpha(CURR(line, i)) || CURR(line, i) == '_')
 	{
 	    px = i;
 	    char *string = get_string(line, &i, line_len);
 	    set_token(ret, string, tok_str, px);
+	    continue;
 	}
 
-	//uint8_t op_type = get_operator(line, &i);
-	//printf("op type: %d\n", op_type);
+	px = i;
+	uint8_t op_type = get_operator(line, &i);
+	if (op_type != 255)
+	{
+	    char *op_str = malloc(i - px); 
+	    memset(op_str, '\0', i - px);
+	    set_token(ret, op_str, op_type, px);
+	}
 
         i++;
     }
@@ -253,11 +279,11 @@ toks_t *tokenize_line(const char *line)
 
 void print_tokens(toks_t *tokens)
 {
-    printf("Tokens received: \n");
-    printf("TYPE	COL		DATA\n");
+    printf("Tokens:\n"); 
     for (int i = 0; i < tokens->ntoks; i++)
     {
-	printf("%s	%d		%s\n",
+	printf("ID: %d	Type: %s	LinePtr: [%d]	Symbol: %s\n",
+		i,
 		token_strs[tokens->tokens[i].type],
 		tokens->tokens[i].col,
 		tokens->tokens[i].data);
@@ -279,8 +305,11 @@ int main()
     {
         char *line = readline("-> ");
         toks_t *ltoks = tokenize_line(line);
-	print_tokens(ltoks);
-	free_tokens(ltoks);
-        free(line);
+	if (ltoks != NULL)
+	{
+	    print_tokens(ltoks);
+	    free_tokens(ltoks);
+	}
+	free(line);
     }
 }
