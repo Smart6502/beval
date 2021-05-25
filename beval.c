@@ -161,7 +161,8 @@ char *get_string(const char *line, int *i, int line_len)
 uint8_t get_operator(const char *line, int *i)
 {
     uint8_t op_type = -1;
-    
+    printf("scanning op: %c\n\n", CURR(line, *i));
+
     switch (CURR(line, *i))
     {
 	case '+':
@@ -201,10 +202,24 @@ uint8_t get_operator(const char *line, int *i)
     return op_type;
 }
 
-void tokenize_line(const char *line)
+void set_token(toks_t *tokens, char *data, uint8_t type, int col)
+{
+    tokens->ntoks++;
+    tokens->tokens = realloc(tokens->tokens, sizeof(tok_t) * tokens->ntoks);
+    tokens->tokens[tokens->ntoks - 1] = (tok_t){
+	.data = data,
+	.type = type,
+	.col = col
+    };
+}
+
+toks_t *tokenize_line(const char *line)
 {
     const int line_len = strlen(line);
-    int i = 0;
+    int i = 0, px = 0;
+    toks_t *ret = malloc(sizeof(toks_t));
+    ret->ntoks = 0;
+    ret->tokens = malloc(0);
 
     while (i < line_len)
     {
@@ -215,34 +230,35 @@ void tokenize_line(const char *line)
         if (isdigit(CURR(line, i)))
         {
             uint8_t ntype = tok_int;
+	    px = i;
             char *num = get_number(line, &i, &ntype, line_len);
-            if (num != NULL)
-	    {
-		printf("number retrieved: %s\n", num);
-            	free(num);
-	    }
+	    set_token(ret, num, ntype, px);
 	}
 
 	if (isalpha(CURR(line, i)))
 	{
+	    px = i;
 	    char *string = get_string(line, &i, line_len);
-	    printf("string received: %s\n", string);
-	    free(string);
+	    set_token(ret, string, tok_str, px);
 	}
 
-	printf("%c\n", line[i]);
+	//uint8_t op_type = get_operator(line, &i);
+	//printf("op type: %d\n", op_type);
 
         i++;
     }
+
+    return ret;
 }
 
 void print_tokens(toks_t *tokens)
 {
-    printf("Tokens received: ");
+    printf("Tokens received: \n");
+    printf("TYPE	COL		DATA\n");
     for (int i = 0; i < tokens->ntoks; i++)
     {
-	printf("T:%d	C:%d	D:%s",
-		tokens->tokens[i].type,
+	printf("%s	%d		%s\n",
+		token_strs[tokens->tokens[i].type],
 		tokens->tokens[i].col,
 		tokens->tokens[i].data);
     }
@@ -251,7 +267,7 @@ void print_tokens(toks_t *tokens)
 void free_tokens(toks_t *toks)
 {
     for (int i = 0; i < toks->ntoks; i++)
-    	free(toks->tokens[i].data);
+	free(toks->tokens[i].data);
 
     free(toks->tokens);
     free(toks);
@@ -262,7 +278,9 @@ int main()
     while (1)
     {
         char *line = readline("-> ");
-        tokenize_line(line);
+        toks_t *ltoks = tokenize_line(line);
+	print_tokens(ltoks);
+	free_tokens(ltoks);
         free(line);
     }
 }
