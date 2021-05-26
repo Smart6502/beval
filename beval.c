@@ -1,4 +1,3 @@
-#include <signal.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -13,11 +12,6 @@
 #define NEXT(line, i) (i + 1 < line_len ? line[i + 1] : 0)
 #define PREV(line, i) (line_len > 0 && i - 1 >= 0 ? line[i - 1] : 0)
 
-static bool is_valid_num_char(char chr)
-{
-    return (chr >= '0' && chr <= '9') || chr == '.' || chr == '-' || chr == '+';
-}
-
 enum token_type
 {
     tok_undefined,
@@ -29,9 +23,11 @@ enum token_type
     tok_mul,
     tok_div,
     tok_mod,
-    tok_equal,
+    tok_exp,
     tok_lpar,
     tok_rpar,
+    tok_comma,
+    tok_eof,
     _tok_end
 };
 
@@ -45,11 +41,11 @@ typedef struct
 typedef struct
 {
     tok_t *tokens;
-    int ntoks;
+    int toks_num;
 } toks_t;
 
 const char *token_strs[_tok_end] = {
-    "<>",
+    "< >",
     "INT",
     "FLT",
     "STR",
@@ -58,12 +54,21 @@ const char *token_strs[_tok_end] = {
     "MUL",
     "DIV",
     "MOD",
-    "EQU",
+    "EXP",
     "LPO",
     "RPO",
+    "CMA",
+    "EOF",
 };
 
-bool line_failed = false;
+bool line_failed = false, debug_mode = false;
+
+static bool is_valid_num_char(char chr)
+{
+    return (chr >= '0' && chr <= '9') || chr == '.' || chr == '-' || chr == '+';
+}
+
+void free_tokens(toks_t *toks);
 
 void charon_fail(int col, char *msg, ...)
 {
@@ -186,8 +191,8 @@ uint8_t get_operator(const char *line, int *i)
             op_type = tok_mod;
             break;
 
-        case '=':
-            op_type = tok_equal;
+        case '^':
+            op_type = tok_exp;
             break;
 
         case '(':
@@ -198,20 +203,27 @@ uint8_t get_operator(const char *line, int *i)
             op_type = tok_rpar;
             break;
 
+        case ',':
+            op_type = tok_comma;
+            break;
+
+        case '\0':
+            op_type = tok_eof;
+            break;
+
         default:
             charon_fail(*i, "unknown operator %c", CURR(line, *i));
             op_type = tok_undefined;
     }
 
-    (*i)++;
     return op_type;
 }
 
 void set_token(toks_t *tokens, char *data, uint8_t type, int col)
 {
-    tokens->ntoks++;
-    tokens->tokens = realloc(tokens->tokens, sizeof(tok_t) * tokens->ntoks);
-    tokens->tokens[tokens->ntoks - 1] = (tok_t){
+    tokens->toks_num++;
+    tokens->tokens = realloc(tokens->tokens, sizeof(tok_t) * tokens->toks_num);
+    tokens->tokens[tokens->toks_num - 1] = (tok_t){
         .data = data,
         .type = type,
         .col = col
@@ -224,7 +236,7 @@ toks_t *tokenize_line(const char *line)
     int i = 0, px = 0;
     line_failed = false;
     toks_t *ret = malloc(sizeof(toks_t));
-    ret->ntoks = 0;
+    ret->toks_num = 0;
     ret->tokens = malloc(0);
 
     while (i < line_len)
@@ -252,26 +264,33 @@ toks_t *tokenize_line(const char *line)
 
         px = i;
         uint8_t op_type = get_operator(line, &i);
-        char *op_str = malloc(i - px); 
-        memset(op_str, '\0', i - px);
-        op_str = "!";
+        char *op_str = "<o/>";
         set_token(ret, op_str, op_type, px);
+
+        if (line_failed)
+        {
+            free_tokens(ret);
+            return NULL;
+        }
 
         i++;
     }
 
-    if (line_failed)
-	    return NULL; 
-
     return ret;
+}
+
+/* Uses PEMDAS (Parenthesis, exponents, multiplication, division, addition, subtraction) */
+void parse_line(toks_t *toks)
+{
+    toks = toks;
 }
 
 void print_tokens(toks_t *tokens)
 {
     printf("Tokens:\n"); 
-    for (int i = 0; i < tokens->ntoks; i++)
+    for (int i = 0; i < tokens->toks_num; i++)
     {
-        printf("ID: %d	Type: %s	LinePtr: [%d]	Symbol: %s\n",
+        printf("ID: %d	Type: %s    Linep: [%d]     Symbol: %s\n",
             i,
             token_strs[tokens->tokens[i].type],
             tokens->tokens[i].col,
@@ -281,23 +300,29 @@ void print_tokens(toks_t *tokens)
 
 void free_tokens(toks_t *toks)
 {
-    if (toks->ntoks < 0)
-	    for (int i = 0; i < toks->ntoks; i++)
+    if (toks->toks_num < 0)
+	    for (int i = 0; i < toks->toks_num; i++)
 	        free(toks->tokens[i].data);
 
     free(toks->tokens);
     free(toks);
 }
 
-int main()
+int main(int argc, char *argv[])
 {
+    if (argc > 1 && !strcmp(argv[1], "--debug"))
+        debug_mode = true;
+
     while (1)
     {
         char *line = readline("-> ");
         toks_t *ltoks = tokenize_line(line);	
         if (ltoks != NULL)
-            print_tokens(ltoks);
-        free_tokens(ltoks);
-        free(line);
+        {
+            if (debug_mode) print_tokens(ltoks);
+            parse_line(ltoks);
+            free_tokens(ltoks);
+            free(line);
+        }
     }
 }
