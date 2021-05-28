@@ -38,11 +38,10 @@ typedef struct
     char *data;
 } tok_t;
 
-typedef struct
-{
-    tok_t *tokens;
-    int toks_num;
-} toks_t;
+tok_t *tokens = NULL;
+int token_num = 0;
+int pix = 0, parc = 0;
+bool line_failed = false, debug_mode = false;
 
 const char *token_strs[_tok_end] = {
     "< >",
@@ -55,20 +54,18 @@ const char *token_strs[_tok_end] = {
     "DIV",
     "MOD",
     "EXP",
-    "LPO",
-    "RPO",
+    "LPA",
+    "RPA",
     "CMA",
     "EOF",
 };
-
-bool line_failed = false, debug_mode = false;
 
 static bool is_valid_num_char(char chr)
 {
     return (chr >= '0' && chr <= '9') || chr == '.' || chr == '-' || chr == '+';
 }
 
-void free_tokens(toks_t *toks);
+void free_tokens();
 
 void charon_fail(int col, char *msg, ...)
 {
@@ -219,25 +216,24 @@ uint8_t get_operator(const char *line, int *i)
     return op_type;
 }
 
-void set_token(toks_t *tokens, char *data, uint8_t type, int col)
+void set_token(char *data, uint8_t type, int col)
 {
-    tokens->toks_num++;
-    tokens->tokens = realloc(tokens->tokens, sizeof(tok_t) * tokens->toks_num);
-    tokens->tokens[tokens->toks_num - 1] = (tok_t){
+    token_num++;
+    tokens = realloc(tokens, sizeof(tok_t) * token_num);
+    tokens[token_num - 1] = (tok_t){
         .data = data,
         .type = type,
         .col = col
     };
 }
 
-toks_t *tokenize_line(const char *line)
+void tokenize_line(const char *line)
 {
     const int line_len = strlen(line);
     int i = 0, px = 0;
     line_failed = false;
-    toks_t *ret = malloc(sizeof(toks_t));
-    ret->toks_num = 0;
-    ret->tokens = malloc(0);
+    token_num = 0;
+    tokens = malloc(0);
 
     while (i < line_len)
     {
@@ -250,7 +246,7 @@ toks_t *tokenize_line(const char *line)
             uint8_t ntype = tok_int;
 	        px = i;
             char *num = get_number(line, &i, &ntype, line_len);
-	        set_token(ret, num, ntype, px);
+	        set_token(num, ntype, px);
 	        continue;
 	    }
 
@@ -258,54 +254,143 @@ toks_t *tokenize_line(const char *line)
         {
             px = i;
             char *string = get_string(line, &i, line_len);
-            set_token(ret, string, tok_str, px);
+            set_token(string, tok_str, px);
             continue;
         }
 
         px = i;
         uint8_t op_type = get_operator(line, &i);
         char *op_str = "<o/>";
-        set_token(ret, op_str, op_type, px);
+        set_token(op_str, op_type, px);
 
         if (line_failed)
         {
-            free_tokens(ret);
-            return NULL;
+            free_tokens();
         }
 
         i++;
     }
-
-    return ret;
 }
 
-/* Uses PEMDAS (Parenthesis, exponents, multiplication, division, addition, subtraction) */
-void parse_line(toks_t *toks)
+double parse_atom()
 {
-    toks = toks;
-}
-
-void print_tokens(toks_t *tokens)
-{
-    printf("Tokens:\n"); 
-    for (int i = 0; i < tokens->toks_num; i++)
+    bool below_zero = false;
+    
+    if (tokens[pix].type == tok_sub)
     {
-        printf("ID: %d	Type: %s    Linep: [%d]     Symbol: %s\n",
-            i,
-            token_strs[tokens->tokens[i].type],
-            tokens->tokens[i].col,
-            tokens->tokens[i].data);
+	below_zero = true;
+	pix++;
+    }
+    
+    if (tokens[pix].type == tok_add)
+	pix++;
+
+    double atom = atof(tokens[pix].data);
+    pix++;
+
+    return below_zero ? -atom : atom;
+}
+
+double parse_facts()
+{
+    double num0 = parse_atom();
+    if (debug_mode) printf("parse_facts: num0: %g\n", num0);
+
+    for (;;)
+    {
+	uint8_t oper = tokens[pix].type;
+	if (debug_mode) printf("parse_facts: oper: %d\n", oper);
+
+	if (oper != tok_mul && oper != tok_div)
+	    return num0;
+
+	pix++;
+
+	double num1 = parse_atom();
+	if (oper == tok_div)
+	{
+	    if (num1 == 0)
+	    {
+		charon_fail(pix, "Division by zero");
+		return 0;
+	    }
+	    num0 /= num1;
+	}
+	else
+	    num0 *= num1;
+
+	if (debug_mode) printf("parse_facts: oper: num0: %g\n", num0);
     }
 }
 
-void free_tokens(toks_t *toks)
+double parse_summands()
 {
-    if (toks->toks_num < 0)
-	    for (int i = 0; i < toks->toks_num; i++)
-	        free(toks->tokens[i].data);
+    double num0 = parse_facts();
+    if (debug_mode) printf("parse_summands: num0: %g\n", num0);
+    
+    for (;;)
+    {
+	uint8_t oper = tokens[pix].type;
+	if (debug_mode) printf("parse_summands: oper: %d\n", oper);
+	
+	if (oper != tok_sub && oper != tok_add)
+	    return num0;
 
-    free(toks->tokens);
-    free(toks);
+	pix++;
+
+	double num1 = parse_facts();
+	if (oper == tok_sub)
+	    num0 -= num1;
+	else
+	    num0 += num1;
+
+	if (debug_mode) printf("parse_summands: oper: num0: %g\n", num0);
+    }
+}
+
+/* Uses PEMDAS (Parenthesis, exponents, multiplication, division, addition, subtraction) */
+void parse_line()
+{
+    if (!strcmp(tokens[0].data, "exit"))
+    {
+        free_tokens();
+        exit(0);
+    }
+
+    double result = parse_summands();
+    printf("	%g\n", result);
+}
+
+void print_tokens()
+{
+    if (token_num)
+    {
+	printf("Tokens:\n"); 
+    
+    	for (int i = 0; i < token_num; i++)
+    	{
+            printf("ID: %d	Type: %s (%d)    Linep: [%d]	Symbol: %s\n",
+            	i,
+            	token_strs[tokens[i].type],
+		tokens[i].type,
+            	tokens[i].col,
+            	tokens[i].data);
+    	}
+     }
+   
+     putchar('\n');
+}
+
+void free_tokens()
+{
+    if (token_num < 0)
+	    for (int i = 0; i < token_num; i++)
+	        free(tokens[i].data);
+
+    free(tokens);
+
+    token_num = 0;
+    pix = 0;
 }
 
 int main(int argc, char *argv[])
@@ -315,13 +400,17 @@ int main(int argc, char *argv[])
 
     while (1)
     {
-        char *line = readline("-> ");
-        toks_t *ltoks = tokenize_line(line);	
-        if (ltoks != NULL)
+        char *line = readline("\033[1;35m-> \033[0;0m");
+        tokenize_line(line);	
+        if (!line_failed)
         {
-            if (debug_mode) print_tokens(ltoks);
-            parse_line(ltoks);
-            free_tokens(ltoks);
+            if (debug_mode)
+                print_tokens();
+            
+            if (token_num > 0)
+                parse_line();
+            
+            free_tokens();
             free(line);
         }
     }
