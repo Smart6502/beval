@@ -1,42 +1,15 @@
 #include <stdarg.h>
-#include <stdbool.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <readline/readline.h>
+#include "beval.h"
 
 #define NUM_SIZE 25
 #define STR_SIZE 30
 #define CURR(line, i) (line[i])
 #define NEXT(line, i) (i + 1 < line_len ? line[i + 1] : 0)
 #define PREV(line, i) (line_len > 0 && i - 1 >= 0 ? line[i - 1] : 0)
-
-enum token_type
-{
-    tok_undefined,
-    tok_int,
-    tok_flt,
-    tok_str,
-    tok_add,
-    tok_sub,
-    tok_mul,
-    tok_div,
-    tok_mod,
-    tok_exp,
-    tok_lpar,
-    tok_rpar,
-    tok_comma,
-    tok_eof,
-    _tok_end
-};
-
-typedef struct
-{
-    uint8_t type;
-    int col;
-    char *data;
-} tok_t;
 
 tok_t *tokens = NULL;
 int token_num = 0;
@@ -64,8 +37,6 @@ static bool is_valid_num_char(char chr)
 {
     return (chr >= '0' && chr <= '9') || chr == '.' || chr == '-' || chr == '+';
 }
-
-void free_tokens();
 
 void charon_fail(int col, char *msg, ...)
 {
@@ -275,6 +246,7 @@ void tokenize_line(const char *line)
 double parse_atom()
 {
     bool below_zero = false;
+    double atom = 0;
     
     if (tokens[pix].type == tok_sub)
     {
@@ -285,8 +257,16 @@ double parse_atom()
     if (tokens[pix].type == tok_add)
 	pix++;
 
-    double atom = atof(tokens[pix].data);
-    pix++;
+    if (tokens[pix].type == tok_int || tokens[pix].type == tok_flt)
+    {
+    	atom = atof(tokens[pix].data);
+    	pix++;
+    }
+
+    if (tokens[pix].type == tok_str)
+    {
+        atom = parse_function();
+    }
 
     return below_zero ? -atom : atom;
 }
@@ -299,7 +279,7 @@ double parse_facts()
     for (;;)
     {
 	uint8_t oper = tokens[pix].type;
-	if (debug_mode) printf("parse_facts: oper: %d\n", oper);
+	if (debug_mode) printf("parse_facts: <o/>: %d\n", oper);
 
 	if (oper != tok_mul && oper != tok_div)
 	    return num0;
@@ -319,7 +299,7 @@ double parse_facts()
 	else
 	    num0 *= num1;
 
-	if (debug_mode) printf("parse_facts: oper: num0: %g\n", num0);
+	if (debug_mode) printf("parse_facts: <o/>: num0: %g\n", num0);
     }
 }
 
@@ -331,7 +311,7 @@ double parse_summands()
     for (;;)
     {
 	uint8_t oper = tokens[pix].type;
-	if (debug_mode) printf("parse_summands: oper: %d\n", oper);
+	if (debug_mode) printf("parse_summands: <o/>: %d\n", oper);
 	
 	if (oper != tok_sub && oper != tok_add)
 	    return num0;
@@ -344,7 +324,7 @@ double parse_summands()
 	else
 	    num0 += num1;
 
-	if (debug_mode) printf("parse_summands: oper: num0: %g\n", num0);
+	if (debug_mode) printf("parse_summands: <o/>: num0: %g\n", num0);
     }
 }
 
