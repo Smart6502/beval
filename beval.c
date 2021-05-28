@@ -243,11 +243,12 @@ void tokenize_line(const char *line)
     }
 }
 
+double parse_summands();
 double parse_atom()
 {
     bool below_zero = false;
     double atom = 0;
-    
+
     if (tokens[pix].type == tok_sub)
     {
 	below_zero = true;
@@ -261,11 +262,31 @@ double parse_atom()
     {
     	atom = atof(tokens[pix].data);
     	pix++;
+        return below_zero ? -atom : atom;
+    }
+
+    if (tokens[pix].type == tok_lpar)
+    {
+        pix++;
+        parc++;
+
+        double res = parse_summands();
+        if (tokens[pix].type != tok_rpar)
+        {
+            charon_fail(pix, "Parenthesis fault");
+            return 0;
+        }
+
+        pix++;
+        parc--;
+
+	return below_zero ? -res : res;
     }
 
     if (tokens[pix].type == tok_str)
     {
-        atom = parse_function();
+        double fatom = parse_function();
+	return below_zero ? -fatom : fatom;
     }
 
     return below_zero ? -atom : atom;
@@ -338,7 +359,9 @@ void parse_line()
     }
 
     double result = parse_summands();
-    printf("	%g\n", result);
+
+    if (!line_failed && parc == 0)
+    	printf("	%g\n\n", result);
 }
 
 void print_tokens()
@@ -349,10 +372,10 @@ void print_tokens()
     
     	for (int i = 0; i < token_num; i++)
     	{
-            printf("ID: %d	Type: %s (%d)    Linep: [%d]	Symbol: %s\n",
+            printf("ID: %d	Type: %s	Linep: [%d]	Symbol: %s\n",
             	i,
             	token_strs[tokens[i].type],
-		tokens[i].type,
+		//tokens[i].type,
             	tokens[i].col,
             	tokens[i].data);
     	}

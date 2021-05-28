@@ -4,15 +4,13 @@
 #include "beval.h"
 
 const char *function_strs[] = {
+    "sqrt",
+    "log",
     "sin",
     "cos",
-    "tan"
-};
-
-const uint8_t function_args[] = {
-    1,
-    1,
-    1
+    "tan",
+    "torad",
+    "todeg"
 };
 
 double torad(double degrees)
@@ -39,18 +37,28 @@ double parse_function()
     double farg = parse_atom();
     pix++;
 
-    printf("%d", tokens[pix].type);
-
     switch (function_num)
     {
-        case 0:
-            return sin(farg);
+	case 0:
+	    return sqrt(farg);
 
-        case 1:
-            return cos(farg);
+	case 1:
+	    return log(farg);
 
         case 2:
+            return sin(farg);
+
+        case 3:
+            return cos(farg);
+
+        case 4:
             return tan(farg);
+
+	case 5:
+	    return torad(farg);
+
+	case 6:
+	    return todeg(farg);
 
         default:
             return 0;
