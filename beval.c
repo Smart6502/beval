@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <readline/history.h>
 #include <readline/readline.h>
 #include "beval.h"
 
@@ -10,7 +11,6 @@
 #define STR_SIZE 30
 #define CURR(line, i) (line[i])
 #define NEXT(line, i) (i + 1 < line_len ? line[i + 1] : 0)
-#define PREV(line, i) (line_len > 0 && i - 1 >= 0 ? line[i - 1] : 0)
 
 tok_t *tokens = NULL;
 int token_num = 0;
@@ -274,7 +274,7 @@ double parse_atom()
         double res = parse_summands();
         if (tokens[pix].type != tok_rpar)
         {
-            charon_fail(pix, "Parenthesis fault");
+            charon_fail(tokens[pix].col, "Parenthesis fault");
             return 0;
         }
 
@@ -336,7 +336,7 @@ double parse_facts()
 	{
 	    if (num1 == 0)
 	    {
-		charon_fail(pix, "Division by zero");
+		charon_fail(tokens[pix].col, "Division by zero");
 		return 0;
 	    }
 	    num0 /= num1;
@@ -424,6 +424,8 @@ int main(int argc, char *argv[])
 {
     if (argc > 1 && !strcmp(argv[1], "--debug"))
         debug_mode = true;
+
+    using_history();
 
     while (1)
     {

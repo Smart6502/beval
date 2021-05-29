@@ -30,7 +30,7 @@ typedef struct
 } tok_t;
 
 double parse_function();
-double parse_atom();
+double parse_summands();
 double to_degrees(double radians);
 double to_radians(double degrees);
 void free_tokens();

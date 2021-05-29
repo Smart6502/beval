@@ -2,14 +2,16 @@
 
 ### A maths evaluator written in C
 
-- [x] Supports normal operators like `+, -, * and /`
-- [x] Supports functions like `sin(), cos(), tan(), log(), sqrt()`
-- [x] Supports parenthesis
+#### Supports:
+
+- [x] Normal operators like `+, -, * and /`
+- [x] Functions like `sin(), cos(), tan(), log(), sqrt()`
+- [x] Parenthesis
+- [x] Exponents
 
 ### Building
 
 `make`
-
 
 ### Plans
 

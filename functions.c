@@ -34,7 +34,7 @@ double parse_function()
     pix++;
     pix++;
 
-    double farg = parse_atom();
+    double farg = parse_summands();
     pix++;
 
     switch (function_num)
