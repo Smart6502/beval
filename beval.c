@@ -1,3 +1,4 @@
+#include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -292,9 +293,32 @@ double parse_atom()
     return below_zero ? -atom : atom;
 }
 
-double parse_facts()
+double parse_exp()
 {
     double num0 = parse_atom();
+    if (debug_mode) printf("parse_exp: num0: %g\n", num0);
+
+    for (;;)
+    {
+	uint8_t oper = tokens[pix].type;
+	if (debug_mode) printf("parse_exp: <o/>: %d\n", oper);
+
+	if (oper != tok_exp)
+	    return num0;
+
+	pix++;
+
+	double num1 = parse_atom();
+	
+	num0 = pow(num0, num1);
+
+	if (debug_mode) printf("parse exp: <o/>: num0: %g\n", num0);
+    }
+}
+
+double parse_facts()
+{
+    double num0 = parse_exp();
     if (debug_mode) printf("parse_facts: num0: %g\n", num0);
 
     for (;;)
@@ -307,7 +331,7 @@ double parse_facts()
 
 	pix++;
 
-	double num1 = parse_atom();
+	double num1 = parse_exp();
 	if (oper == tok_div)
 	{
 	    if (num1 == 0)
@@ -361,7 +385,7 @@ void parse_line()
     double result = parse_summands();
 
     if (!line_failed && parc == 0)
-    	printf("	%g\n\n", result);
+    	printf("\033[1;35m=>	%g\033[0;0m\n\n", result);
 }
 
 void print_tokens()
