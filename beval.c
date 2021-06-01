@@ -247,6 +247,7 @@ void tokenize_line(const char *line)
 double parse_summands();
 double parse_atom()
 {
+    if (line_failed) return 0;
     bool below_zero = false;
     double atom = 0;
 
@@ -295,6 +296,7 @@ double parse_atom()
 
 double parse_exp()
 {
+    if (line_failed) return 0;
     double num0 = parse_atom();
     if (debug_mode) printf("parse_exp: num0: %g\n", num0);
 
@@ -318,6 +320,7 @@ double parse_exp()
 
 double parse_facts()
 {
+    if (line_failed) return 0;
     double num0 = parse_exp();
     if (debug_mode) printf("parse_facts: num0: %g\n", num0);
 
@@ -350,6 +353,7 @@ double parse_facts()
 
 double parse_summands()
 {
+    if (line_failed) return 0;
     double num0 = parse_facts();
     if (debug_mode) printf("parse_summands: num0: %g\n", num0);
     

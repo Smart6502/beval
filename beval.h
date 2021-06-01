@@ -34,6 +34,7 @@ double parse_summands();
 double to_degrees(double radians);
 double to_radians(double degrees);
 void free_tokens();
+void charon_fail(int col, char *msg, ...);
 
 extern int pix;
 extern tok_t *tokens;

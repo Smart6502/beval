@@ -25,11 +25,18 @@ double todeg(double radians)
 
 double parse_function()
 {
+    if (line_failed) return 0;
     uint8_t function_num = -1;
 
     for (long unsigned int j = 0; j < sizeof(function_strs) / sizeof(const char *); j++)
         if (!strcmp(function_strs[j], tokens[pix].data))
             function_num = j;
+
+    if (function_num >= sizeof(function_strs) / sizeof(const char *))
+    {
+	charon_fail(tokens[pix].col, "Could not find function %s", tokens[pix].data);
+	return 0;
+    }
 
     pix++;
     pix++;
