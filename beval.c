@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <readline/history.h>
 #include <readline/readline.h>
 #include "beval.h"
 
@@ -12,6 +11,7 @@
 #define CURR(line, i) (line[i])
 #define NEXT(line, i) (i + 1 < line_len ? line[i + 1] : 0)
 
+char *_version = "1.15";
 tok_t *tokens = NULL;
 int token_num = 0;
 int pix = 0, parc = 0;
@@ -389,7 +389,7 @@ void parse_line()
     double result = parse_summands();
 
     if (!line_failed && parc == 0)
-    	printf("\033[1;35m=>	%g\033[0;0m\n\n", result);
+    	printf("\033[1;35m=>	%f\033[0;0m\n\n", result);
 }
 
 void print_tokens()
@@ -429,11 +429,14 @@ int main(int argc, char *argv[])
     if (argc > 1 && !strcmp(argv[1], "--debug"))
         debug_mode = true;
 
-    using_history();
-
+    printf("B-Evaluator (BEval) version %s\n", _version);
+    printf("Copyright (C) 2021 Smart6502\n");
+    printf("This software is licensed under the GNU GPL v3.\n");
+    printf("Use the command `exit` to quit the program\n");
+    printf("Whitespaces are optional.\nSome error checking systems are in place, but no guarantees are made regarding the evalutation of malformed inputs\n");
     while (1)
     {
-        char *line = readline("\033[1;35m-> \033[0;0m");
+        char *line = readline("\033[1;35m>> \033[0;0m");
         tokenize_line(line);	
         if (!line_failed)
         {
