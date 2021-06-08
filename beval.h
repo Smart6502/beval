@@ -36,7 +36,7 @@ double to_radians(double degrees);
 void free_tokens();
 void charon_fail(int col, char *msg, ...);
 
-extern int pix;
+extern int pix, parc;
 extern tok_t *tokens;
 extern bool line_failed, debug_mode;
 

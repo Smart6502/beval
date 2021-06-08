@@ -11,7 +11,6 @@
 #define CURR(line, i) (line[i])
 #define NEXT(line, i) (i + 1 < line_len ? line[i + 1] : 0)
 
-char *_version = "1.15";
 tok_t *tokens = NULL;
 int token_num = 0;
 int pix = 0, parc = 0;

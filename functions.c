@@ -39,10 +39,18 @@ double parse_function()
     }
 
     pix++;
+    if (tokens[pix].type != tok_lpar)
+    {
+	charon_fail(tokens[pix].col, "function: %s: argument error", tokens[pix - 1].data);
+	return 0;
+    }
+
+    parc++;
     pix++;
 
     double farg = parse_summands();
     pix++;
+    parc--;
 
     switch (function_num)
     {
